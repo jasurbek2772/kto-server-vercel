@@ -4,10 +4,10 @@ const path    = require('path');
 require('dotenv').config();
 require('./src/db');
 
-const mastersRouter  = require('./src/routes/masters');
-const requestsRouter = require('./src/routes/requests_cloudinary');
-const onecRouter     = require('./src/routes/onec');
-const authRouter     = require('./src/routes/auth');
+const mastersRouter  = require('./src/routes/masters_pg');
+const requestsRouter = require('./src/routes/requests_pg');
+const onecRouter     = require('./src/routes/onec_pg');
+const authRouter     = require('./src/routes/auth_pg');
 const authMiddleware = require('./src/routes/middleware/auth_middleware');
 
 const app = express();
