@@ -8,7 +8,6 @@ const mastersRouter  = require('./src/routes/masters');
 const requestsRouter = require('./src/routes/requests_cloudinary');
 const onecRouter     = require('./src/routes/onec');
 const authRouter     = require('./src/routes/auth');
-const authMiddleware = require('./src/routes/middleware/auth_middleware');
 
 const app = express();
 app.use(cors());
@@ -30,10 +29,15 @@ app.use('/api/masters',  mastersRouter);
 app.use('/api/requests', requestsRouter);
 app.use('/api/1c',       onecRouter);
 
-// Пинг для cron-job (чтобы Vercel не засыпал)
+// Пинг для cron-job
 app.get('/ping', (req, res) => res.json({ status: 'ok', time: new Date() }));
 
 app.get('/', (req, res) => res.json({ status: 'ok', message: 'КТО API работает' }));
 
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`✓ Сервер: http://localhost:${PORT}`));
+// ✅ Для Vercel — экспортируем app вместо listen
+if (process.env.VERCEL) {
+  module.exports = app;
+} else {
+  const PORT = process.env.PORT || 4000;
+  app.listen(PORT, () => console.log(`✓ Сервер: http://localhost:${PORT}`));
+}
