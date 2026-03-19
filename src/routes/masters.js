@@ -40,43 +40,34 @@ router.get('/all', async (req, res) => {
 });
 
 // POST /api/masters — добавить мастера
+// POST /api/masters — добавить мастера
 router.post('/', upload.single('photo'), async (req, res) => {
-  console.log('POST body:', req.body); 
   const { full_name, code, phone } = req.body;
-
   if (!full_name) return res.status(400).json({ error: 'full_name обязателен' });
 
   try {
     let photoUrl = null;
-
-    // Если при создании мастера сразу передали файл фото
     if (req.file) {
       const cloudinaryResult = await uploadToCloudinary(req.file.buffer, 'masters');
       photoUrl = cloudinaryResult.secure_url;
     }
 
-    // Сохраняем в базу (с фото или без него)
-    // Обратите внимание: добавлено поле photo_url в запрос
-    db.query(
-      'INSERT INTO masters (full_name, code, phone, photo_url) VALUES (?, ?, ?, ?)',
-      [full_name, code || null, phone || null, photoUrl],
-      (err, result) => {
-        if (err) {
-          console.error('DB error:', err);
-          return res.status(500).json({ error: err.message });
-        }
-        res.status(201).json({ 
-          id: result.insertId, 
-          full_name, 
-          code, 
-          phone, 
-          photo_url: photoUrl 
-        });
-      }
-    );
+    // В Postgres используем $1, $2... и RETURNING id
+    const sql = 'INSERT INTO masters (full_name, code, phone, photo_url) VALUES ($1, $2, $3, $4) RETURNING id';
+    const values = [full_name, code || null, phone || null, photoUrl];
+
+    const result = await db.query(sql, values);
+    
+    res.status(201).json({ 
+      id: result.rows[0].id, // В pg ID берем из rows
+      full_name, 
+      code, 
+      phone, 
+      photo_url: photoUrl 
+    });
   } catch (e) {
-    console.error('Cloudinary upload error:', e);
-    res.status(500).json({ error: 'Ошибка загрузки фото: ' + e.message });
+    console.error('Error:', e);
+    res.status(500).json({ error: e.message });
   }
 });
 
