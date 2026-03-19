@@ -2,7 +2,7 @@ const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
 require('dotenv').config();
-require('./src/db');
+require('./src/db_neon');
 
 const mastersRouter  = require('./src/routes/masters_pg');
 const requestsRouter = require('./src/routes/requests_pg');
