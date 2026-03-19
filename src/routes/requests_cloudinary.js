@@ -100,13 +100,29 @@ router.post('/:id/done', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+function formatDateForPostgres(dateStr) {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+  
+  // Если строка вида "19.03.2026, 14:20:16", берем дату до запятой
+  const cleanDate = dateStr.split(',')[0].trim(); 
+  
+  const parts = cleanDate.split('.');
+  if (parts.length === 3) {
+    // Формируем YYYY-MM-DD
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  return dateStr; 
+}
+
+// PUT /api/requests/:id — редактировать
 // PUT /api/requests/:id — редактировать
 router.put('/:id', upload.none(), async (req, res) => {
   const { category, address, branch, contact_person, deadline, dispatcher, content } = req.body;
-  const formattedDeadline = formatDateForMySQL(deadline);
+  
+  // ВАЖНО: Вызываем функцию, которую объявили выше
+  const formattedDeadline = formatDateForPostgres(deadline);
 
   try {
-    // В Postgres строго $1, $2... по порядку
     await db.query(
       `UPDATE requests SET
         category=$1, address=$2, branch=$3, contact_person=$4,
