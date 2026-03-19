@@ -3,6 +3,7 @@ const router  = express.Router();
 const db      = require('../db');
 
 // POST /api/1c/request
+// POST /api/1c/request
 router.post('/request', async (req, res) => {
   const { number_1c, category, date_received, deadline,
           branch, address, contact_person, content, dispatcher } = req.body;
@@ -11,22 +12,56 @@ router.post('/request', async (req, res) => {
     return res.status(400).json({ error: 'number_1c и date_received обязательны' });
   }
 
+  // Вспомогательная функция для конвертации "19.03.2026, 04:28:20" -> "2026-03-19 04:28:20"
+  const format1cDate = (str) => {
+    if (!str || typeof str !== 'string' || !str.includes('.')) return str;
+    try {
+      const [datePart, timePart] = str.split(', ');
+      const [d, m, y] = datePart.split('.');
+      return `${y}-${m}-${d} ${timePart || '00:00:00'}`;
+    } catch (e) {
+      return str; // если что-то пошло не так, вернем как есть (база сама выдаст ошибку)
+    }
+  };
+
+  const dbDateReceived = format1cDate(date_received);
+  const dbDeadline = deadline ? format1cDate(deadline) : null;
+
   try {
     const { rows } = await db.query(
       `INSERT INTO requests
-         (number_1c, category, date_received, deadline, branch, address, contact_person, content, dispatcher)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-       ON CONFLICT (number_1c) DO UPDATE SET
-         category=EXCLUDED.category,
-         deadline=EXCLUDED.deadline,
-         address=EXCLUDED.address,
-         content=EXCLUDED.content
-       RETURNING id`,
-      [number_1c, category, date_received, deadline || null,
-       branch, address, contact_person, content, dispatcher]
+          (number_1c, category, date_received, deadline, branch, address, contact_person, content, dispatcher)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ON CONFLICT (number_1c) DO UPDATE SET
+          category = EXCLUDED.category,
+          deadline = EXCLUDED.deadline,
+          address = EXCLUDED.address,
+          content = EXCLUDED.content,
+          date_received = EXCLUDED.date_received
+        RETURNING id`,
+      [
+        number_1c, 
+        category || null, 
+        dbDateReceived, 
+        dbDeadline, 
+        branch || null, 
+        address || null, 
+        contact_person || null, 
+        content || null, 
+        dispatcher || null
+      ]
     );
-    res.status(201).json({ success: true, id: rows[0].id, number_1c, message: 'Заявка принята' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    
+    res.status(201).json({ 
+      success: true, 
+      id: rows[0].id, 
+      number_1c, 
+      message: 'Заявка принята и обработана' 
+    });
+  } catch (err) {
+    console.error('Ошибка в 1C роуте:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET /api/1c/status/:number
